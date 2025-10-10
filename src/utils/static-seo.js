@@ -1,0 +1,11 @@
+export const pages = ['home',
+        'about',
+        'shop',
+        'blog',
+        'wishlist',
+        'cart',
+        'checkout',
+        'delivery-information',
+        'privacy-policy',
+        'contact-us',
+        'returns']
