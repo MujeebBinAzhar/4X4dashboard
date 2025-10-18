@@ -56,6 +56,9 @@ const ProductDrawer = ({ id }) => {
     isActive: false
   });
 
+  // State for quick discount type
+  const [quickDiscountType, setQuickDiscountType] = useState('fixed'); // 'fixed' or 'percentage'
+
   // Use the barcode modal hook
   const {
     barcodeModal,
@@ -91,41 +94,67 @@ const ProductDrawer = ({ id }) => {
     calculateProfitMargin(originalPrice, value);
   };
 
-  // Handle quick dollar discount
-  const handleQuickDollarDiscount = (value) => {
+  // Handle quick discount value change
+  const handleQuickDiscountChange = (value) => {
     const originalPrice = parseFloat(watch('originalPrice')) || 0;
-    const discountAmount = parseFloat(value) || 0;
+    const discountValue = parseFloat(value) || 0;
 
-    setQuickDiscount(prev => ({
-      ...prev,
-      dollarAmount: discountAmount,
-      percentageAmount: 0, // Clear percentage when dollar is used
-      isActive: discountAmount > 0
-    }));
+    if (quickDiscountType === 'fixed') {
+      // Fixed dollar discount
+      const newQuickDiscount = {
+        dollarAmount: discountValue,
+        percentageAmount: 0,
+        isActive: discountValue > 0
+      };
+      setQuickDiscount(newQuickDiscount);
 
-    // Apply discount to product price
-    const discountedPrice = originalPrice - discountAmount;
-    setValue('originalPrice', discountedPrice);
-    handleOriginalPriceChange(discountedPrice);
+      // Calculate final price: originalPrice - discountValue
+      const finalPrice = Math.max(0, originalPrice - discountValue);
+      setValue('price', finalPrice.toFixed(2));
+      
+      // Set hidden form fields for submission
+      setValue('quickDiscountDollar', discountValue);
+      setValue('quickDiscountPercentage', 0);
+      setValue('quickDiscountActive', discountValue > 0);
+      
+    } else {
+      // Percentage discount
+      const newQuickDiscount = {
+        dollarAmount: 0,
+        percentageAmount: discountValue,
+        isActive: discountValue > 0
+      };
+      setQuickDiscount(newQuickDiscount);
+
+      // Calculate final price: originalPrice - (originalPrice * percentage / 100)
+      const discountAmount = (originalPrice * discountValue) / 100;
+      const finalPrice = Math.max(0, originalPrice - discountAmount);
+      setValue('price', finalPrice.toFixed(2));
+      
+      // Set hidden form fields for submission
+      setValue('quickDiscountDollar', 0);
+      setValue('quickDiscountPercentage', discountValue);
+      setValue('quickDiscountActive', discountValue > 0);
+    }
   };
 
-  // Handle quick percentage discount
-  const handleQuickPercentageDiscount = (value) => {
+  // Handle quick discount type change
+  const handleQuickDiscountTypeChange = (type) => {
+    setQuickDiscountType(type);
+    // Reset discount values when type changes
+    setQuickDiscount({
+      dollarAmount: 0,
+      percentageAmount: 0,
+      isActive: false
+    });
+    // Reset price to original
     const originalPrice = parseFloat(watch('originalPrice')) || 0;
-    const discountPercentage = parseFloat(value) || 0;
-
-    setQuickDiscount(prev => ({
-      ...prev,
-      dollarAmount: 0, // Clear dollar when percentage is used
-      percentageAmount: discountPercentage,
-      isActive: discountPercentage > 0
-    }));
-
-    // Apply percentage discount to product price
-    const discountAmount = (originalPrice * discountPercentage) / 100;
-    const discountedPrice = originalPrice - discountAmount;
-    setValue('originalPrice', discountedPrice);
-    handleOriginalPriceChange(discountedPrice);
+    setValue('price', originalPrice.toFixed(2));
+    
+    // Reset hidden form fields
+    setValue('quickDiscountDollar', 0);
+    setValue('quickDiscountPercentage', 0);
+    setValue('quickDiscountActive', false);
   };
 
   // Handle barcode generation
@@ -357,6 +386,11 @@ const ProductDrawer = ({ id }) => {
 
       <Scrollbars className="track-horizontal thumb-horizontal w-full md:w-7/12 lg:w-8/12 xl:w-8/12 relative dark:bg-gray-700 dark:text-gray-200">
         <form onSubmit={handleSubmit(onSubmit)} className="block" id="block">
+          {/* Hidden fields for quick discount submission */}
+          <input type="hidden" {...register('quickDiscountDollar')} />
+          <input type="hidden" {...register('quickDiscountPercentage')} />
+          <input type="hidden" {...register('quickDiscountActive')} />
+          
           {tapValue === "Basic Info" && (
             <div className="px-6 pt-8 flex-grow w-full h-full max-h-full pb-40 md:pb-32 lg:pb-32 xl:pb-32">
               {/* <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
@@ -499,7 +533,7 @@ const ProductDrawer = ({ id }) => {
 
 
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
-                <LabelArea label="Product Price" />
+                <LabelArea label="Original Price" />
                 <div className="col-span-8 sm:col-span-4">
                   <div className={`flex flex-row`}>
                     <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm focus:border-emerald-300 dark:bg-gray-700 dark:text-gray-300 dark:border dark:border-gray-600">
@@ -508,18 +542,25 @@ const ProductDrawer = ({ id }) => {
                     <Input
                       {...register("originalPrice", { required: "Original Price is required!" })}
                       type="number"
-                      step={0.1}
+                      step={0.01}
                       min={0}
                       disabled={isCombination}
-                      placeholder="Product Price"
+                      placeholder="Original Price"
                       onChange={(e) => {
                         setValue('originalPrice', e.target.value);
                         handleOriginalPriceChange(e.target.value);
+                        // Recalculate quick discount if active
+                        if (quickDiscount.isActive) {
+                          handleQuickDiscountChange(quickDiscountType === 'fixed' ? quickDiscount.dollarAmount : quickDiscount.percentageAmount);
+                        }
                       }}
-                      className={`rounded-l-none ${quickDiscount.isActive ? 'text-red-600 bg-red-50 border-red-300' : ''}`}
+                      className="rounded-l-none"
                     />
                   </div>
                   <Error errorName={errors.originalPrice} />
+                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    This is the base price before any discounts
+                  </div>
                 </div>
               </div>
 
@@ -581,60 +622,93 @@ const ProductDrawer = ({ id }) => {
               </div>
 
 
+              {/* Quick Discount Type Selector */}
+              <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
+                <LabelArea label="Quick Discount Type" />
+                <div className="col-span-8 sm:col-span-4">
+                  <Select
+                    value={quickDiscountType}
+                    onChange={(e) => handleQuickDiscountTypeChange(e.target.value)}
+                    className="border border-gray-300 rounded-md"
+                  >
+                    <option value="fixed">Fixed Amount ({currency})</option>
+                    <option value="percentage">Percentage (%)</option>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Quick Discount Input */}
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
                 <LabelArea label="Quick Discount" />
                 <div className="col-span-8 sm:col-span-4">
-                  <div className="flex gap-4">
-
-                    <div className="flex-1">
-                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
-                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Dollar Discount
-                        </div>
-                        <div className="flex flex-row">
-                          <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm focus:border-emerald-300 dark:bg-gray-700 dark:text-gray-300 dark:border dark:border-gray-600">
-                            {currency}
-                          </span>
-                          <Input
-                            {...register("quickDollarAmount")}
-                            type="number"
-                            step={0.01}
-                            min={0}
-                            placeholder="0.00"
-                            value={quickDiscount.dollarAmount || ''}
-                            onChange={(e) => handleQuickDollarDiscount(e.target.value)}
-                            className="rounded-l-none"
-                          />
-                        </div>
+                  <div className={`border-2 rounded-lg p-4 ${quickDiscount.isActive ? 'border-green-500 bg-green-50 dark:bg-green-900' : 'border-gray-300 bg-gray-50 dark:bg-gray-700'} dark:border-gray-600`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {quickDiscountType === 'fixed' ? 'Dollar Discount' : 'Percentage Discount'}
                       </div>
+                      {quickDiscount.isActive && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                          Active
+                        </span>
+                      )}
                     </div>
+                    <div className="flex flex-row">
+                      <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-white text-gray-700 text-sm font-semibold focus:border-emerald-300 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500">
+                        {quickDiscountType === 'fixed' ? currency : '%'}
+                      </span>
+                      <Input
+                        type="number"
+                        step={quickDiscountType === 'fixed' ? 0.01 : 0.1}
+                        min={0}
+                        max={quickDiscountType === 'percentage' ? 100 : undefined}
+                        placeholder={quickDiscountType === 'fixed' ? '0.00' : '0'}
+                        value={quickDiscountType === 'fixed' ? (quickDiscount.dollarAmount || '') : (quickDiscount.percentageAmount || '')}
+                        onChange={(e) => handleQuickDiscountChange(e.target.value)}
+                        disabled={!watch('originalPrice') || parseFloat(watch('originalPrice')) <= 0}
+                        className="rounded-l-none font-medium"
+                      />
+                    </div>
+                    {quickDiscount.isActive && (
+                      <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                        💰 Discount applied: 
+                        {quickDiscountType === 'fixed' 
+                          ? ` ${currency}${quickDiscount.dollarAmount}` 
+                          : ` ${quickDiscount.percentageAmount}%`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                    <div className="flex-1">
-                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
-                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Percentage Discount
+              {/* Final Selling Price Display */}
+              {quickDiscount.isActive && (
+                <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
+                  <LabelArea label="Final Selling Price" />
+                  <div className="col-span-8 sm:col-span-4">
+                    <div className="border-2 border-blue-400 rounded-lg p-4 bg-blue-50 dark:bg-blue-900 dark:border-blue-600">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            Original Price: <span className="line-through">{currency}{parseFloat(watch('originalPrice') || 0).toFixed(2)}</span>
+                          </div>
+                          <div className="text-2xl font-bold text-blue-700 dark:text-blue-200">
+                            {currency}{parseFloat(watch('price') || 0).toFixed(2)}
+                          </div>
+                          <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                            You save: {currency}
+                            {(parseFloat(watch('originalPrice') || 0) - parseFloat(watch('price') || 0)).toFixed(2)}
+                          </div>
                         </div>
-                        <div className="flex flex-row">
-                          <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm focus:border-emerald-300 dark:bg-gray-700 dark:text-gray-300 dark:border dark:border-gray-600">
-                            %
+                        <div className="text-right">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
+                            ✓ Discount Active
                           </span>
-                          <Input
-                            {...register("quickPercentageAmount")}
-                            type="number"
-                            step={0.01}
-                            min={0}
-                            max={100}
-                            placeholder="0"
-                            value={quickDiscount.percentageAmount || ''}
-                            onChange={(e) => handleQuickPercentageDiscount(e.target.value)}
-                            className="rounded-l-none"
-                          />
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
                 <LabelArea label={t("Margin Type")} />
