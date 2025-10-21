@@ -111,12 +111,12 @@ const ProductDrawer = ({ id }) => {
       // Calculate final price: originalPrice - discountValue
       const finalPrice = Math.max(0, originalPrice - discountValue);
       setValue('price', finalPrice.toFixed(2));
-      
+
       // Set hidden form fields for submission
       setValue('quickDiscountDollar', discountValue);
       setValue('quickDiscountPercentage', 0);
       setValue('quickDiscountActive', discountValue > 0);
-      
+
     } else {
       // Percentage discount
       const newQuickDiscount = {
@@ -130,7 +130,7 @@ const ProductDrawer = ({ id }) => {
       const discountAmount = (originalPrice * discountValue) / 100;
       const finalPrice = Math.max(0, originalPrice - discountAmount);
       setValue('price', finalPrice.toFixed(2));
-      
+
       // Set hidden form fields for submission
       setValue('quickDiscountDollar', 0);
       setValue('quickDiscountPercentage', discountValue);
@@ -150,7 +150,7 @@ const ProductDrawer = ({ id }) => {
     // Reset price to original
     const originalPrice = parseFloat(watch('originalPrice')) || 0;
     setValue('price', originalPrice.toFixed(2));
-    
+
     // Reset hidden form fields
     setValue('quickDiscountDollar', 0);
     setValue('quickDiscountPercentage', 0);
@@ -390,7 +390,7 @@ const ProductDrawer = ({ id }) => {
           <input type="hidden" {...register('quickDiscountDollar')} />
           <input type="hidden" {...register('quickDiscountPercentage')} />
           <input type="hidden" {...register('quickDiscountActive')} />
-          
+
           {tapValue === "Basic Info" && (
             <div className="px-6 pt-8 flex-grow w-full h-full max-h-full pb-40 md:pb-32 lg:pb-32 xl:pb-32">
               {/* <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
@@ -533,19 +533,47 @@ const ProductDrawer = ({ id }) => {
 
 
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
-                <LabelArea label="Original Price" />
+                <LabelArea label="Trade Price (Cost Price)" />
                 <div className="col-span-8 sm:col-span-4">
                   <div className={`flex flex-row`}>
                     <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm focus:border-emerald-300 dark:bg-gray-700 dark:text-gray-300 dark:border dark:border-gray-600">
                       {currency}
                     </span>
                     <Input
-                      {...register("originalPrice", { required: "Original Price is required!" })}
+                      {...register("tradePrice")}
                       type="number"
                       step={0.01}
                       min={0}
                       disabled={isCombination}
-                      placeholder="Original Price"
+                      placeholder="Trade Price (Cost Price)"
+                      onChange={(e) => {
+                        setValue('tradePrice', e.target.value);
+                        handleTradePriceChange(e.target.value);
+                      }}
+                      className="rounded-l-none"
+                    />
+                  </div>
+                  <Error errorName={errors.tradePrice} />
+                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    This is what you pay to buy the product
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
+                <LabelArea label="Original Price (Sale Price)" />
+                <div className="col-span-8 sm:col-span-4">
+                  <div className={`flex flex-row`}>
+                    <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm focus:border-emerald-300 dark:bg-gray-700 dark:text-gray-300 dark:border dark:border-gray-600">
+                      {currency}
+                    </span>
+                    <Input
+                      {...register("originalPrice", { required: false })}
+                      type="number"
+                      step={0.01}
+                      min={0}
+                      disabled={isCombination}
+                      placeholder="Original Price (Sale Price)"
                       onChange={(e) => {
                         setValue('originalPrice', e.target.value);
                         handleOriginalPriceChange(e.target.value);
@@ -559,33 +587,8 @@ const ProductDrawer = ({ id }) => {
                   </div>
                   <Error errorName={errors.originalPrice} />
                   <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    This is the base price before any discounts
+                    This is your selling price before any discounts
                   </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
-                <LabelArea label="Trade Price" />
-                <div className="col-span-8 sm:col-span-4">
-                  <div className={`flex flex-row`}>
-                    <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm focus:border-emerald-300 dark:bg-gray-700 dark:text-gray-300 dark:border dark:border-gray-600">
-                      {currency}
-                    </span>
-                    <Input
-                      {...register("tradePrice")}
-                      type="number"
-                      step={0.01}
-                      min={0}
-                      disabled={isCombination}
-                      placeholder="Trade Price"
-                      onChange={(e) => {
-                        setValue('tradePrice', e.target.value);
-                        handleTradePriceChange(e.target.value);
-                      }}
-                      className="rounded-l-none"
-                    />
-                  </div>
-                  <Error errorName={errors.tradePrice} />
                 </div>
               </div>
 
@@ -596,24 +599,24 @@ const ProductDrawer = ({ id }) => {
                   <div className="flex gap-4">
                     {/* Dollar Difference Box */}
                     <div className="flex-1">
-                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                      <div className={`border rounded-lg p-3 ${profitMargin.dollarDifference >= 0 ? 'border-green-300 bg-green-50 dark:bg-green-900 dark:border-green-600' : 'border-red-300 bg-red-50 dark:bg-red-900 dark:border-red-600'}`}>
                         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Dollar Difference
+                          {profitMargin.dollarDifference >= 0 ? 'Profit' : 'Loss'}
                         </div>
-                        <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          {`${currency}${profitMargin.dollarDifference.toFixed(2)}`}
+                        <div className={`text-lg font-semibold ${profitMargin.dollarDifference >= 0 ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-200'}`}>
+                          {`${currency}${Math.abs(profitMargin.dollarDifference).toFixed(2)}`}
                         </div>
                       </div>
                     </div>
 
                     {/* Percentage Difference Box */}
                     <div className="flex-1">
-                      <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+                      <div className={`border rounded-lg p-3 ${profitMargin.percentageDifference >= 0 ? 'border-green-300 bg-green-50 dark:bg-green-900 dark:border-green-600' : 'border-red-300 bg-red-50 dark:bg-red-900 dark:border-red-600'}`}>
                         <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          Percentage Difference
+                          {profitMargin.percentageDifference >= 0 ? 'Profit Margin' : 'Loss Margin'}
                         </div>
-                        <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                          {`${profitMargin.percentageDifference.toFixed(1)}%`}
+                        <div className={`text-lg font-semibold ${profitMargin.percentageDifference >= 0 ? 'text-green-700 dark:text-green-200' : 'text-red-700 dark:text-red-200'}`}>
+                          {`${Math.abs(profitMargin.percentageDifference).toFixed(1)}%`}
                         </div>
                       </div>
                     </div>
@@ -670,9 +673,9 @@ const ProductDrawer = ({ id }) => {
                     </div>
                     {quickDiscount.isActive && (
                       <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                        💰 Discount applied: 
-                        {quickDiscountType === 'fixed' 
-                          ? ` ${currency}${quickDiscount.dollarAmount}` 
+                        💰 Discount applied:
+                        {quickDiscountType === 'fixed'
+                          ? ` ${currency}${quickDiscount.dollarAmount}`
                           : ` ${quickDiscount.percentageAmount}%`}
                       </div>
                     )}
@@ -736,7 +739,7 @@ const ProductDrawer = ({ id }) => {
                           {currency}
                         </span>
                         <Input
-                          {...register("price", { required: "Price is required!" })}
+                          {...register("price", { required: false })}
                           type="number"
                           step={0.01}
                           min={0}
@@ -790,83 +793,6 @@ const ProductDrawer = ({ id }) => {
               }
 
 
-              <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
-                <LabelArea label={t("Discount Type")} />
-                <div className="col-span-8 sm:col-span-4">
-                  <Select
-
-                    {...register("discountType", { required: 'Discount Type is required' })}
-                  >
-                    <option value="" defaultValue hidden>
-                      Select discount Type
-                    </option>
-                    <option value="percentage">Percentage</option>
-                    <option value="fixed">Fixed</option>
-
-                  </Select>
-                  <Error errorName={errors.discountType} />
-                </div>
-              </div>
-
-              {
-                watch('discountType') === "fixed" && (
-                  <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
-                    <LabelArea label="Discount Price" />
-                    <div className="col-span-8 sm:col-span-4">
-                      <InputValue
-                        disabled={isCombination}
-                        register={register}
-                        maxValue={100000}
-                        minValue={1}
-                        label="Discount Price"
-                        name="discountPrice"
-                        type="number"
-                        placeholder="Discount Price"
-                        defaultValue={0.0}
-                        required={true}
-                        product
-                        currency={currency}
-                      />
-                      <Error errorName={errors.discountPrice} />
-                    </div>
-                  </div>
-                )
-              }
-              {
-                watch('discountType') === "percentage" && (
-                  <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
-                    <LabelArea label="Discount Percentage" />
-                    <div className="col-span-8 sm:col-span-4">
-                      <div className={`flex flex-row`}>
-                        <span className="inline-flex items-center px-3 rounded rounded-r-none border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm  focus:border-emerald-300 dark:bg-gray-700 dark:text-gray-300 dark:border dark:border-gray-600">
-                          {/* {currency} */} %
-                        </span>
-
-                        <Input
-                          type="number"
-                          step={0.01}
-                          min={1}
-                          disabled={!watch('price')}
-                          placeholder="Enter percentage"
-                          onChange={(e) => {
-                            const tradePrice = parseFloat(watch('price')) || 0;
-                            const inputPercentage = parseFloat(e.target.value) || 0;
-                            const calculatedValue = tradePrice - (tradePrice * inputPercentage / 100);
-                            console.log(calculatedValue)
-                            setValue('discountPrice', calculatedValue)
-                            // register('price').onChange({target:{value:calculatedValue}});
-
-                          }}
-                          className="mr-2 p-2 rounded-l-none"
-                        />
-                      </div>
-                      <Error errorName={errors.discountPrice} />
-
-                    </div>
-                  </div>
-
-                )
-              }
 
 
               {/* 
@@ -1025,7 +951,7 @@ const ProductDrawer = ({ id }) => {
                 <div className="col-span-8 sm:col-span-4">
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <InputArea required={true} register={register} name="manufacturerSku" label={'Manufacturer Sku'} type="text" placeholder={t("Manufacturer SKU")} />
+                      <InputArea required={false} register={register} name="manufacturerSku" label={'Manufacturer Sku'} type="text" placeholder={t("Manufacturer SKU")} />
                     </div>
                     <Button
                       type="button"
@@ -1046,7 +972,7 @@ const ProductDrawer = ({ id }) => {
                 <div className="col-span-8 sm:col-span-4">
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <InputArea required={true} register={register} label={'Internal Sku'} name="internalSku" type="text" placeholder={t("Internal SKU")} />
+                      <InputArea required={false} register={register} label={'Internal Sku'} name="internalSku" type="text" placeholder={t("Internal SKU")} />
                     </div>
                     <Button
                       type="button"
@@ -1067,7 +993,7 @@ const ProductDrawer = ({ id }) => {
                 <div className="col-span-8 sm:col-span-4">
                   <Textarea
 
-                    {...register("additionalProductDetails", { required: "Additional Product Details is required!" })}
+                    {...register("additionalProductDetails", { required: false })}
                     name="additionalProductDetails"
                     placeholder={t("Additional Product Details")}
                     rows="4"
@@ -1081,7 +1007,7 @@ const ProductDrawer = ({ id }) => {
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
                 <LabelArea label={t("Last Batch Ordered From Manufacturer")} />
                 <div className="col-span-8 sm:col-span-4">
-                  <Input type="date"  {...register("lastBatchOrderedFromManufacturer", { required: 'Last Batch Order Manufacturer required' })} />
+                  <Input type="date"  {...register("lastBatchOrderedFromManufacturer", { required: false })} />
                   <Error errorName={errors.lastBatchOrderedFromManufacturer} />
 
                 </div>
@@ -1091,7 +1017,7 @@ const ProductDrawer = ({ id }) => {
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
                 <LabelArea label={t("Last Batch Order Quantity")} />
                 <div className="col-span-8 sm:col-span-4">
-                  <InputValue register={register} name="lastBatchOrderQuantity" label={'Last batch order quantity'} required={true} type="number" />
+                  <InputValue register={register} name="lastBatchOrderQuantity" label={'Last batch order quantity'} required={false} type="number" />
                   <Error errorName={errors.lastBatchOrderQuantity} />
 
                 </div>
@@ -1100,7 +1026,7 @@ const ProductDrawer = ({ id }) => {
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
                 <LabelArea label={t("Last Batch Order Reference")} />
                 <div className="col-span-8 sm:col-span-4">
-                  <InputArea register={register} name="lastBatchOrderReference" label={'Last Batch order reference'} required={true} type="text" />
+                  <InputArea register={register} name="lastBatchOrderReference" label={'Last Batch order reference'} required={false} type="text" />
                   <Error errorName={errors.lastBatchOrderReference} />
 
                 </div>
@@ -1148,7 +1074,7 @@ const ProductDrawer = ({ id }) => {
               <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
                 <LabelArea label={t("Ship Out Location")} />
                 <div className="col-span-8 sm:col-span-4">
-                  <InputArea register={register} name="shipOutLocation" label={'Ship Out location'} required={true} type="text" />
+                  <InputArea register={register} name="shipOutLocation" label={'Ship Out location'} required={false} type="text" />
                   <Error errorName={errors.shipOutLocation} />
 
                 </div>
