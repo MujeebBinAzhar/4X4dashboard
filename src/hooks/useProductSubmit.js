@@ -190,11 +190,9 @@ const useProductSubmit = (id) => {
               : 0,
         },
         quickDiscount: {
-          dollarAmount: getNumberTwo(data.quickDollarAmount) || 0,
-          percentageAmount: getNumberTwo(data.quickPercentageAmount) || 0,
-          isActive:
-            getNumberTwo(data.quickDollarAmount) > 0 ||
-            getNumberTwo(data.quickPercentageAmount) > 0,
+          dollarAmount: getNumberTwo(data.quickDiscountDollar) || 0,
+          percentageAmount: getNumberTwo(data.quickDiscountPercentage) || 0,
+          isActive: data.quickDiscountActive === 'true' || data.quickDiscountActive === true,
         },
         isCombination: updatedVariants?.length > 0 ? isCombination : false,
         variants: isCombination ? updatedVariants : [],
@@ -541,6 +539,11 @@ const useProductSubmit = (id) => {
             setTotalStock(res.stock);
             setOriginalPrice(res?.prices?.originalPrice);
             setPrice(res?.prices?.price);
+            
+            // Load quick discount data
+            setValue('quickDiscountDollar', res?.quickDiscount?.dollarAmount || 0);
+            setValue('quickDiscountPercentage', res?.quickDiscount?.percentageAmount || 0);
+            setValue('quickDiscountActive', res?.quickDiscount?.isActive || false);
           }
         } catch (err) {
           notifyError(err?.response?.data?.message || err?.message);
