@@ -109,7 +109,7 @@ const useProductFilter = (data) => {
   const [isDisabled, setIsDisable] = useState(false);
 
   //service data filtering
-  const serviceData = data;
+  const serviceData = data || [];
 
   //  console.log('selectedFile',selectedFile)
 

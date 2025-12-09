@@ -11,6 +11,8 @@ const InputValueFive = ({
   minValue,
   defaultValue,
   placeholder,
+  onChange,
+  className,
 }) => {
   const value = {
     valueAsNumber: true,
@@ -40,7 +42,8 @@ const InputValueFive = ({
           disabled={disabled}
           defaultValue={defaultValue}
           placeholder={placeholder}
-          className="mr-2 p-2"
+          onChange={onChange}
+          className={`mr-2 p-2 ${className || ''}`}
         />
       </div>
     </>

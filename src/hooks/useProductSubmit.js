@@ -171,7 +171,8 @@ const useProductSubmit = (id) => {
 
         image: imageUrl,
         stock: variants?.length < 1 ? data.stock : Number(totalStock),
-        tag: JSON.stringify(tag),
+        // Send tags as array, not stringified - backend will handle it
+        tag: Array.isArray(tag) ? tag : (tag ? [tag] : []),
 
         prices: {
           price: getNumber(data.price),
@@ -181,11 +182,11 @@ const useProductSubmit = (id) => {
         },
         profitMargin: {
           dollarDifference:
-            getNumberTwo(data.price) - getNumberTwo(data.tradePrice),
+            getNumberTwo(data.originalPrice) - getNumberTwo(data.tradePrice),
           percentageDifference:
-            getNumberTwo(data.tradePrice) > 0
-              ? ((getNumberTwo(data.price) - getNumberTwo(data.tradePrice)) /
-                  getNumberTwo(data.tradePrice)) *
+            getNumberTwo(data.originalPrice) > 0
+              ? ((getNumberTwo(data.originalPrice) - getNumberTwo(data.tradePrice)) /
+                  getNumberTwo(data.originalPrice)) *
                 100
               : 0,
         },
@@ -197,8 +198,9 @@ const useProductSubmit = (id) => {
         isCombination: updatedVariants?.length > 0 ? isCombination : false,
         variants: isCombination ? updatedVariants : [],
 
-        marginType: data.marginType,
-        discountType: data.discountType,
+        // marginType and discountType are DEPRECATED per requirements - removed
+        // marginType: data.marginType,
+        // discountType: data.discountType,
         manufacturerSku: data.manufacturerSku,
         internalSku: data.internalSku,
         additionalProductDetails: data.additionalProductDetails,
@@ -211,6 +213,7 @@ const useProductSubmit = (id) => {
         flatRateForDropShipping: data.flatRateForDropShipping,
         shipOutLocation: data.shipOutLocation,
         directSupplierLink: data.directSupplierLink,
+        brand: data.brand || null,
       };
 
       // console.log("productData ===========>", productData, "data", data);
@@ -272,8 +275,9 @@ const useProductSubmit = (id) => {
           setValue("tradePrice", res?.prices?.tradePrice);
           setBarcode(res.barcode);
           setSku(res.sku);
-          setValue("marginType", res.marginType);
-          setValue("discountType", res.discountType);
+          // marginType and discountType are DEPRECATED - removed
+          // setValue("marginType", res.marginType);
+          // setValue("discountType", res.discountType);
           setValue("manufacturerSku", res.manufacturerSku);
           setValue("internalSku", res.internalSku);
           setValue("additionalProductDetails", res.additionalProductDetails);
@@ -357,8 +361,9 @@ const useProductSubmit = (id) => {
       setValue("productId");
       setValue("excerpt");
       setProductId("");
-      setValue("marginType");
-      setValue("discountType");
+      // marginType and discountType are DEPRECATED - removed
+      // setValue("marginType");
+      // setValue("discountType");
       setValue("manufacturerSku");
       setValue("internalSku");
       setValue("additionalProductDetails");
@@ -410,8 +415,9 @@ const useProductSubmit = (id) => {
       setValue("quickPercentageAmount", 0);
       clearErrors("show");
       clearErrors("barcode");
-      clearErrors("marginType");
-      clearErrors("discountType");
+      // marginType and discountType are DEPRECATED - removed
+      // clearErrors("marginType");
+      // clearErrors("discountType");
       clearErrors("manufacturerSku");
       clearErrors("internalSku");
       clearErrors("additionalProductDetails");
@@ -494,8 +500,9 @@ const useProductSubmit = (id) => {
             setBarcode(res.barcode);
             setSku(res.sku);
 
-            setValue("marginType", res.marginType);
-            setValue("discountType", res.discountType);
+            // marginType and discountType are DEPRECATED - removed
+            // setValue("marginType", res.marginType);
+            // setValue("discountType", res.discountType);
             setValue("manufacturerSku", res.manufacturerSku);
             setValue("internalSku", res.internalSku);
             setValue("additionalProductDetails", res.additionalProductDetails);
@@ -511,6 +518,7 @@ const useProductSubmit = (id) => {
             setValue("flatRateForDropShipping", res.flatRateForDropShipping);
             setValue("shipOutLocation", res.shipOutLocation);
             setValue("directSupplierLink", res.directSupplierLink);
+            setValue("brand", res.brand?._id || res.brand || "");
 
             res.categories.map((category) => {
               category.name = showingTranslateValue(category?.name, lang);

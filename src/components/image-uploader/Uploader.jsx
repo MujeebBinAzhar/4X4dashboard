@@ -30,12 +30,24 @@ const Uploader = ({ setImageUrl, imageUrl, product, folder }) => {
 
   const { getRootProps, getInputProps, fileRejections } = useDropzone({
     accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".webp"],
+      "image/jpeg": [".jpeg", ".jpg"],
+      "image/png": [".png"],
+      "image/webp": [".webp"],
     },
     multiple: product ? true : false,
     maxSize: 500000,
     maxFiles: globalSetting?.number_of_image_per_product || 2,
-    onDrop: (acceptedFiles) => {
+    onDrop: (acceptedFiles, rejectedFiles) => {
+      // Validate file types explicitly
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const invalidFiles = rejectedFiles.filter(
+        (file) => !validTypes.includes(file.file.type)
+      );
+      
+      if (invalidFiles.length > 0) {
+        notifyError("Only .jpeg, .jpg, .png, and .webp image formats are allowed!");
+      }
+
       setFiles(
         acceptedFiles.map((file) =>
           Object.assign(file, {
@@ -179,7 +191,7 @@ const Uploader = ({ setImageUrl, imageUrl, product, folder }) => {
           <FiUploadCloud className="text-3xl text-emerald-500" />
         </span>
         <p className="text-sm mt-2">{t("DragYourImage")}</p>
-        <em className="text-xs text-gray-400">{t("imageFormat")}</em>
+        <em className="text-xs text-gray-400">Only .jpeg, .jpg, .png, and .webp formats allowed</em>
       </div>
 
       <div className="text-emerald-500">{loading && err}</div>

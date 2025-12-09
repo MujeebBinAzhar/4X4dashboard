@@ -10,12 +10,12 @@ import { useDispatch } from "react-redux";
 export const SidebarContext = createContext();
 
 export const SidebarProvider = ({ children }) => {
-  const resultsPerPage = 20;
+  const resultsPerPage = 60; // Default page size per requirements
   const searchRef = useRef("");
   const invoiceRef = useRef("");
   // const dispatch = useDispatch();
 
-  const [limitData, setLimitData] = useState(20);
+  const [limitData, setLimitData] = useState(60); // Default page size per requirements
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isBulkDrawerOpen, setIsBulkDrawerOpen] = useState(false);

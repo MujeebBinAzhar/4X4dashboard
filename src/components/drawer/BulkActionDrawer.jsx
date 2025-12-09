@@ -52,6 +52,8 @@ const BulkActionDrawer = ({
     setDefaultCategory,
     selectCategoryName,
     setSelectCategoryName,
+    watch,
+    setValue,
   } = useBulkActionSubmit(ids, lang, childId);
 
   const motion = {
@@ -83,9 +85,9 @@ const BulkActionDrawer = ({
     return obj._id === target
       ? obj
       : obj?.children?.reduce(
-          (acc, obj) => acc ?? findObject(obj, target),
-          undefined
-        );
+        (acc, obj) => acc ?? findObject(obj, target),
+        undefined
+      );
   };
 
   const handleSelect = (key) => {
@@ -165,9 +167,9 @@ const BulkActionDrawer = ({
                           singleSelect={true}
                           ref={resetRefTwo}
                           hidePlaceholder={true}
-                          onKeyPressFn={function noRefCheck() {}}
-                          onRemove={function noRefCheck() {}}
-                          onSearch={function noRefCheck() {}}
+                          onKeyPressFn={function noRefCheck() { }}
+                          onRemove={function noRefCheck() { }}
+                          onSearch={function noRefCheck() { }}
                           onSelect={(v) => setDefaultCategory(v)}
                           selectedValues={defaultCategory}
                           options={selectedCategory}
@@ -184,6 +186,47 @@ const BulkActionDrawer = ({
                           processOption={published}
                         />
                         <Error errorName={errors.status} />
+                      </div>
+                    </div>
+
+                    {/* Phase 5: Featured Status */}
+                    <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
+                      <LabelArea label="Featured" />
+                      <div className="col-span-8 sm:col-span-4">
+                        <SwitchToggle
+                          handleProcess={(value) => {
+                            // Handle featured status
+                            setValue("isFeatured", value);
+                          }}
+                          processOption={watch("isFeatured") || false}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Phase 5: Stock Status */}
+                    <div className="grid grid-cols-6 gap-3 md:gap-5 xl:gap-6 lg:gap-6 mb-6">
+                      <LabelArea label="Stock Status" />
+                      <div className="col-span-8 sm:col-span-4">
+                        <Select
+                          {...register("stockStatus")}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (value === "in_stock") {
+                              setValue("stock", 1);
+                            } else if (value === "out_of_stock") {
+                              setValue("stock", 0);
+                            } else if (value === "on_backorder") {
+                              setValue("stock", -1);
+                            }
+                          }}
+                        >
+                          <option value="" defaultValue hidden>
+                            Select Stock Status
+                          </option>
+                          <option value="in_stock">In Stock</option>
+                          <option value="out_of_stock">Out of Stock</option>
+                          <option value="on_backorder">On Backorder</option>
+                        </Select>
                       </div>
                     </div>
 

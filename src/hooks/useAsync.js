@@ -3,7 +3,7 @@ import axios from "axios";
 import { useContext, useEffect, useState } from "react";
 import { SidebarContext } from "@/context/SidebarContext";
 
-const useAsync = (asyncFunction) => {
+const useAsync = (asyncFunction, dependencies = null) => {
   const [data, setData] = useState([] || {});
   const [error, setError] = useState("");
   // const [errCode, setErrCode] = useState('');
@@ -26,41 +26,8 @@ const useAsync = (asyncFunction) => {
     sortedField,
   } = useContext(SidebarContext);
 
-  useEffect(() => {
-    let unmounted = false;
-    let source = axios.CancelToken.source();
-    (async () => {
-      try {
-        const res = await asyncFunction({ cancelToken: source.token });
-        if (!unmounted) {
-          setData(res);
-          setError("");
-          setLoading(false);
-        }
-      } catch (err) {
-        if (!unmounted) {
-          setError(err.message);
-          if (axios.isCancel(err)) {
-            setError(err.message);
-            setLoading(false);
-            setData([]);
-          } else {
-            setError(err.message);
-            setLoading(false);
-            setData([]);
-          }
-        }
-      }
-    })();
-
-    setIsUpdate(false);
-
-    return () => {
-      unmounted = true;
-      source.cancel("Cancelled in cleanup");
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
+  // Use custom dependencies if provided, otherwise use default context dependencies
+  const deps = dependencies || [
     invoice,
     status,
     zone,
@@ -75,7 +42,47 @@ const useAsync = (asyncFunction) => {
     category,
     searchText,
     sortedField,
-  ]);
+  ];
+
+  useEffect(() => {
+    let unmounted = false;
+    let source = axios.CancelToken.source();
+    
+    // Reset loading state when dependencies change
+    setLoading(true);
+    setError("");
+    
+    (async () => {
+      try {
+        // Call asyncFunction - it may or may not accept cancelToken
+        const res = await asyncFunction();
+        if (!unmounted) {
+          setData(res);
+          setError("");
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!unmounted) {
+          if (axios.isCancel(err)) {
+            // Request was cancelled, don't set error
+            setLoading(false);
+          } else {
+            setError(err.message || "An error occurred");
+            setLoading(false);
+            setData([]);
+          }
+        }
+      }
+    })();
+
+    setIsUpdate(false);
+
+    return () => {
+      unmounted = true;
+      source.cancel("Cancelled in cleanup");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 
   return {
     data,

@@ -55,7 +55,8 @@ const useBulkActionSubmit = (ids, lang = "en", childId) => {
         productType: [isFoodItem ? "food" : "others"],
         show: data.show,
         status: published ? "show" : "hide",
-        tag: JSON.stringify(tag),
+        // Send tags as array, not stringified - backend will handle it
+        tag: Array.isArray(tag) ? tag : (tag ? [tag] : []),
       };
 
       // language data
@@ -99,6 +100,14 @@ const useBulkActionSubmit = (ids, lang = "en", childId) => {
       };
 
       if (location.pathname === "/products") {
+        // Phase 5: Add featured and stock status to product data
+        if (data.isFeatured !== undefined) {
+          productData.isFeatured = data.isFeatured;
+        }
+        if (data.stock !== undefined) {
+          productData.stock = data.stock;
+        }
+
         // console.log("productData", productData);
         const res = await ProductServices.updateManyProducts(productData);
         setIsUpdate(true);
@@ -234,6 +243,8 @@ const useBulkActionSubmit = (ids, lang = "en", childId) => {
     setDefaultCategory,
     selectCategoryName,
     setSelectCategoryName,
+    watch,
+    setValue,
     isFoodItem,
     setIsFoodItem,
   };

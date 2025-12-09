@@ -6,8 +6,11 @@ import {
   TableRow,
 } from "@windmill/react-ui";
 import { t } from "i18next";
-import { FiZoomIn } from "react-icons/fi";
+import { FiZoomIn, FiStar } from "react-icons/fi";
 import { Link } from "react-router-dom";
+import dayjs from "dayjs";
+import React, { useState, useContext } from "react";
+import { toast } from "react-toastify";
 
 //internal import
 import MainDrawer from "@/components/drawer/MainDrawer";
@@ -19,12 +22,22 @@ import ShowHideButton from "@/components/table/ShowHideButton";
 import Tooltip from "@/components/tooltip/Tooltip";
 import useToggleDrawer from "@/hooks/useToggleDrawer";
 import useUtilsFunction from "@/hooks/useUtilsFunction";
+import ProductRowActions from "@/components/product/ProductRowActions";
+import QuickEditModal from "@/components/product/QuickEditModal";
+import ProductServices from "@/services/ProductServices";
+import { SidebarContext } from "@/context/SidebarContext";
 
 //internal import
 
 const ProductTable = ({ products, isCheck, setIsCheck }) => {
   const { title, serviceId, handleModalOpen, handleUpdate } = useToggleDrawer();
   const { currency, showingTranslateValue, getNumberTwo } = useUtilsFunction();
+  const { setIsUpdate } = useContext(SidebarContext);
+  const [quickEditProduct, setQuickEditProduct] = useState(null);
+  const [isQuickEditOpen, setIsQuickEditOpen] = useState(false);
+
+  // Website base URL (adjust based on your environment)
+  const websiteBaseUrl = process.env.REACT_APP_WEBSITE_URL || "http://localhost:3000";
 
   const handleClick = (e) => {
     const { id, checked } = e.target;
@@ -34,6 +47,43 @@ const ProductTable = ({ products, isCheck, setIsCheck }) => {
     if (!checked) {
       setIsCheck(isCheck.filter((item) => item !== id));
     }
+  };
+
+  // Phase 4: Row action handlers
+  const handleEdit = (product) => {
+    handleUpdate(product._id);
+  };
+
+  const handleQuickEdit = (product) => {
+    setQuickEditProduct(product);
+    setIsQuickEditOpen(true);
+  };
+
+  const handleView = (product) => {
+    if (product.slug) {
+      const productUrl = `${websiteBaseUrl}/product/${product.slug}`;
+      window.open(productUrl, "_blank");
+    } else {
+      toast.error(t("Product slug not found"));
+    }
+  };
+
+  const handleDuplicate = async (product) => {
+    try {
+      const response = await ProductServices.duplicateProduct(product._id);
+      toast.success(t("Product duplicated successfully"));
+      setIsUpdate(true); // Trigger refresh via context
+    } catch (error) {
+      toast.error(error.message || t("Failed to duplicate product"));
+    }
+  };
+
+  const handleTrash = (product) => {
+    handleModalOpen(product._id, showingTranslateValue(product?.title), product);
+  };
+
+  const handleQuickEditUpdate = () => {
+    setIsUpdate(true); // Trigger refresh via context
   };
 
   return (
@@ -46,111 +96,247 @@ const ProductTable = ({ products, isCheck, setIsCheck }) => {
         </MainDrawer>
       )}
 
-      <TableBody>
-        {products?.map((product, i) => (
-          <TableRow key={i + 1}>
-            <TableCell>
-              <CheckBox
-                type="checkbox"
-                name={product?.title?.en}
-                id={product._id}
-                handleClick={handleClick}
-                isChecked={isCheck?.includes(product._id)}
-              />
-            </TableCell>
+      {/* Phase 4: Quick Edit Modal */}
+      <QuickEditModal
+        isOpen={isQuickEditOpen}
+        onClose={() => {
+          setIsQuickEditOpen(false);
+          setQuickEditProduct(null);
+        }}
+        product={quickEditProduct}
+        onUpdate={handleQuickEditUpdate}
+      />
 
-            <TableCell>
-              <div className="flex items-center">
-                {product?.image[0] ? (
+      <TableBody>
+        {products?.map((product, i) => {
+          // Parse tags safely - handle multiple levels of stringification
+          const parseTags = (tagData) => {
+            if (!tagData) return [];
+
+            // If it's already an array, return it (filter out empty strings)
+            if (Array.isArray(tagData)) {
+              return tagData.filter(tag => tag && typeof tag === 'string' && tag.trim());
+            }
+
+            // If it's a string, try to parse it recursively
+            if (typeof tagData === 'string') {
+              let current = tagData;
+              let attempts = 0;
+              const maxAttempts = 10; // Prevent infinite loops
+
+              while (attempts < maxAttempts) {
+                try {
+                  const parsed = JSON.parse(current);
+
+                  // If we got an array, return it
+                  if (Array.isArray(parsed)) {
+                    return parsed.filter(tag => tag && typeof tag === 'string' && tag.trim());
+                  }
+
+                  // If we got a string, try parsing again
+                  if (typeof parsed === 'string') {
+                    current = parsed;
+                    attempts++;
+                    continue;
+                  }
+
+                  // If we got something else, wrap it in an array
+                  return [parsed].filter(tag => tag && typeof tag === 'string' && tag.trim());
+                } catch (e) {
+                  // If parsing fails, check if it's a valid tag string
+                  if (current.trim() && !current.startsWith('[') && !current.startsWith('"')) {
+                    // It's a plain string tag, return it as array
+                    return [current.trim()];
+                  }
+                  // Invalid JSON, return empty array
+                  return [];
+                }
+              }
+
+              // If we've exhausted attempts, return empty array
+              return [];
+            }
+
+            return [];
+          };
+
+          const tags = parseTags(product.tag);
+
+          // Format date
+          const formattedDate = product.updatedAt
+            ? dayjs(product.updatedAt).format('YYYY/MM/DD [at] h:mm a')
+            : product.createdAt
+              ? dayjs(product.createdAt).format('YYYY/MM/DD [at] h:mm a')
+              : '—';
+
+          // Get categories (show all categories, not just default)
+          const categories = product.categories || [];
+          const categoryNames = categories.length > 0
+            ? categories.map(cat => showingTranslateValue(cat?.name)).join(', ')
+            : showingTranslateValue(product?.category?.name) || '—';
+
+          // Stock status
+          const stockStatus = product.stock > 0
+            ? 'in_stock'
+            : product.stock === 0
+              ? 'out_of_stock'
+              : 'on_backorder';
+
+          return (
+            <TableRow key={i + 1}>
+              {/* Checkbox */}
+              <TableCell className="w-12">
+                <CheckBox
+                  type="checkbox"
+                  name={product?.title?.en}
+                  id={product._id}
+                  handleClick={handleClick}
+                  isChecked={isCheck?.includes(product._id)}
+                />
+              </TableCell>
+
+              {/* Thumbnail */}
+              <TableCell className="w-16">
+                {product?.image?.[0] ? (
                   <Avatar
-                    className="hidden p-1 mr-2 md:block bg-gray-50 shadow-none"
-                    src={product?.image[0]}
+                    className="p-1 bg-gray-50 shadow-none"
+                    src={product.image[0]}
                     alt="product"
+                    size="small"
                   />
                 ) : (
                   <Avatar
                     src={`https://res.cloudinary.com/ahossain/image/upload/v1655097002/placeholder_kvepfp.png`}
                     alt="product"
+                    size="small"
                   />
                 )}
-                <div>
-                  <h2
-                    className={`text-sm font-medium ${product?.title.length > 30 ? "wrap-long-title" : ""
-                      }`}
-                  >
-                    {showingTranslateValue(product?.title)?.substring(0, 28)}
-                  </h2>
+              </TableCell>
+
+              {/* Name with Row Actions */}
+              <TableCell className="w-48 min-w-[180px] max-w-[200px]">
+                <div className="flex items-center gap-2 group">
+                  <div className="flex-1 min-w-0">
+                    <h2
+                      className="text-sm font-medium truncate"
+                      title={showingTranslateValue(product?.title)}
+                    >
+                      {showingTranslateValue(product?.title)}
+                    </h2>
+                    {product.status === 'hide' && (
+                      <span className="text-xs text-gray-400 italic">— Draft</span>
+                    )}
+                  </div>
+                  {/* Phase 4: Row Actions Menu */}
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <ProductRowActions
+                      product={product}
+                      onEdit={() => handleEdit(product)}
+                      onQuickEdit={() => handleQuickEdit(product)}
+                      onView={() => handleView(product)}
+                      onDuplicate={() => handleDuplicate(product)}
+                      onTrash={() => handleTrash(product)}
+                    />
+                  </div>
                 </div>
-              </div>
-            </TableCell>
+              </TableCell>
 
-            <TableCell>
-              <span className="text-sm">
-                {showingTranslateValue(product?.category?.name)}
-              </span>
-            </TableCell>
+              {/* SKU */}
+              <TableCell className="w-32 min-w-[100px] max-w-[120px]">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={product.sku || '—'}>
+                  {product.sku || '—'}
+                </span>
+              </TableCell>
 
-            <TableCell>
-              <span className="text-sm font-semibold">
-                {currency}
-                {product?.isCombination
-                  ? getNumberTwo(product?.variants[0]?.originalPrice)
-                  : getNumberTwo(product?.prices?.originalPrice)}
-              </span>
-            </TableCell>
+              {/* Stock */}
+              <TableCell className="w-24 min-w-[80px] max-w-[100px]">
+                <div className="flex flex-col">
+                  <span className="text-sm">{product.stock ?? 0}</span>
+                  {stockStatus === 'in_stock' && (
+                    <Badge type="success" className="text-xs mt-1">In stock</Badge>
+                  )}
+                  {stockStatus === 'out_of_stock' && (
+                    <Badge type="danger" className="text-xs mt-1">Out of stock</Badge>
+                  )}
+                  {stockStatus === 'on_backorder' && (
+                    <Badge type="warning" className="text-xs mt-1">On backorder</Badge>
+                  )}
+                </div>
+              </TableCell>
 
-            <TableCell>
-              <span className="text-sm font-semibold">
-                {currency}
-                {product?.isCombination
-                  ? getNumberTwo(product?.variants[0]?.price)
-                  : getNumberTwo(product?.prices?.price)}
-              </span>
-            </TableCell>
+              {/* Price */}
+              <TableCell className="w-24 min-w-[80px] max-w-[100px]">
+                <span className="text-sm font-semibold">
+                  {currency}
+                  {product?.isCombination
+                    ? getNumberTwo(product?.variants[0]?.price || product?.variants[0]?.originalPrice)
+                    : getNumberTwo(product?.prices?.price || product?.prices?.originalPrice)}
+                </span>
+              </TableCell>
 
-            <TableCell>
-              <span className="text-sm">{product.stock}</span>
-            </TableCell>
-            <TableCell>
-              {product.stock > 0 ? (
-                <Badge type="success">{t("Selling")}</Badge>
-              ) : (
-                <Badge type="danger">{t("SoldOut")}</Badge>
-              )}
-            </TableCell>
-            <TableCell>
-              <Link
-                to={`/product/${product._id}`}
-                className="flex justify-center text-gray-400 hover:text-emerald-600"
-              >
-                <Tooltip
-                  id="view"
-                  Icon={FiZoomIn}
-                  title={t("DetailsTbl")}
-                  bgColor="#10B981"
+              {/* Categories */}
+              <TableCell className="w-40 min-w-[120px] max-w-[150px]">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={categoryNames}>
+                  {categoryNames}
+                </span>
+              </TableCell>
+
+              {/* Tags */}
+              <TableCell className="w-40 min-w-[120px] max-w-[150px]">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={tags.length > 0 ? tags.join(', ') : '—'}>
+                  {tags.length > 0 ? tags.join(', ') : '—'}
+                </span>
+              </TableCell>
+
+              {/* Featured (Star Icon) */}
+              <TableCell className="w-16 text-center">
+                {product.isFeatured ? (
+                  <FiStar className="w-5 h-5 text-yellow-400 fill-current mx-auto" />
+                ) : (
+                  <FiStar className="w-5 h-5 text-gray-300 mx-auto" />
+                )}
+              </TableCell>
+
+              {/* Date (Last Modified) */}
+              <TableCell className="w-40 min-w-[140px] max-w-[160px]">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={`Last Modified ${formattedDate}`}>
+                  Last Modified {formattedDate}
+                </span>
+              </TableCell>
+
+              {/* Brands */}
+              <TableCell className="w-32 min-w-[100px] max-w-[120px]">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate block" title={product.brand?.name || '—'}>
+                  {product.brand?.name || '—'}
+                </span>
+              </TableCell>
+
+              {/* Phase 6: Statistics */}
+              <TableCell className="w-24 min-w-[80px] max-w-[100px]">
+                <div className="flex flex-col text-xs">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Views: {product.views || 0}
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Sales: {product.sales || 0}
+                  </span>
+                </div>
+              </TableCell>
+
+              {/* Actions */}
+              <TableCell className="w-20 text-right">
+                <EditDeleteButton
+                  id={product._id}
+                  product={product}
+                  isCheck={isCheck}
+                  handleUpdate={handleUpdate}
+                  handleModalOpen={handleModalOpen}
+                  title={showingTranslateValue(product?.title)}
                 />
-              </Link>
-            </TableCell>
-            <TableCell className="text-center">
-              <ShowHideButton id={product._id} status={product.status} />
-              {/* {product.status} */}
-            </TableCell>
-            <TableCell className="text-center">
-              <ShowHideButton id={product._id} status={product.isFeatured ? 'show' : "hide"} />
-              {/* {product.status} */}
-            </TableCell>
-            <TableCell>
-              <EditDeleteButton
-                id={product._id}
-                product={product}
-                isCheck={isCheck}
-                handleUpdate={handleUpdate}
-                handleModalOpen={handleModalOpen}
-                title={showingTranslateValue(product?.title)}
-              />
-            </TableCell>
-          </TableRow>
-        ))}
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </>
   );

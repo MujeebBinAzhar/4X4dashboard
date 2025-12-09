@@ -41,8 +41,13 @@ instance.interceptors.request.use(function (config) {
 const responseBody = (response) => response.data;
 
 const requests = {
-  get: (url, body, headers) =>
-    instance.get(url, body, headers).then(responseBody),
+  get: (url, config) => {
+    // If responseType is blob, return the full response
+    if (config?.responseType === "blob") {
+      return instance.get(url, config);
+    }
+    return instance.get(url, config).then(responseBody);
+  },
 
   post: (url, body) => instance.post(url, body).then(responseBody),
 
